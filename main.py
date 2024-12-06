@@ -10,6 +10,7 @@ from sklearn.linear_model import ElasticNet
 import mlflow
 import mlflow.sklearn
 from pathlib import Path
+import os
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -34,13 +35,18 @@ if __name__ == "__main__":
 
     # Read the wine-quality csv file from the url
     csv_url = (
-        "data/red-wine-quality.csv"
+        "red-wine-quality.csv"
     )
 
     data = pd.read_csv(csv_url)
+    if not os.path.exists("data/"):
+        os.mkdir("data/")
+    data.to_csv("data/red-wine-quality.csv", index=False)
 
     # Split the data into training and test sets. (0.75, 0.25)
     train, test = train_test_split(data, random_state=42)
+    train.to_csv("data/train.csv", index=False)
+    test.to_csv("data/test.csv", index=False)
 
     # The predicted column is "quality" which is a scaler from [3, 9]
     train_x = train.drop(["quality"], axis=1)
@@ -55,7 +61,7 @@ if __name__ == "__main__":
     print("The set tracking uri is ", mlflow.get_tracking_uri())
 
     exp= mlflow.set_experiment(
-        experiment_name="experiment_2"
+        experiment_name="experiment_3"
     )
     get_exp = mlflow.get_experiment(exp.experiment_id)
 
@@ -83,11 +89,20 @@ if __name__ == "__main__":
 
     mlflow.log_param("alpha", alpha)
     mlflow.log_param("l1_ratio", l1_ratio)
-    mlflow.log_metric("rmse", rmse)
-    mlflow.log_metric("mae", mae)
-    mlflow.log_metric("r2", r2)
 
-    mlflow.sklearn.log_model(lr, "my_model")
+    # log parameters
+    params = {"alpha": alpha, "l1_ratio": l1_ratio}
+    mlflow.log_params(params)
+
+    # log metrics
+    metrics = {"rmse": rmse, "mae": mae, "r2": r2}
+    mlflow.log_metrics(metrics)
+
+    mlflow.sklearn.log_model(lr, "my_model_1")
+
+    mlflow.log_artifacts('data/')
+    artifact_uri = mlflow.get_artifact_uri()
+    print("The artifact path is ", artifact_uri)
 
 
 

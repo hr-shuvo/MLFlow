@@ -55,7 +55,7 @@ if __name__ == "__main__":
     print("The set tracking uri is ", mlflow.get_tracking_uri())
 
     exp= mlflow.set_experiment(
-        experiment_name="experiment_1"
+        experiment_name="experiment_2"
     )
     get_exp = mlflow.get_experiment(exp.experiment_id)
 
@@ -67,26 +67,35 @@ if __name__ == "__main__":
     print(f"Creation timestamp: {get_exp.creation_time}")
 
 
-    with mlflow.start_run(experiment_id=exp.experiment_id) as run:
-        lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42)
-        lr.fit(train_x, train_y)
+    mlflow.start_run()
 
-        predicted_qualities = lr.predict(test_x)
+    lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42)
+    lr.fit(train_x, train_y)
 
-        (rmse, mae, r2) = eval_metrics(test_y, predicted_qualities)
+    predicted_qualities = lr.predict(test_x)
 
-        print(f"RMSE: {rmse}")
-        print(f"MAE : {mae}")
-        print(f"R2  : {r2}")
-        print("ElasticNet model (alpha={:f}, l1_ratio={:f})".format(alpha, l1_ratio))
+    (rmse, mae, r2) = eval_metrics(test_y, predicted_qualities)
 
-        mlflow.log_param("alpha", alpha)
-        mlflow.log_param("l1_ratio", l1_ratio)
-        mlflow.log_metric("rmse", rmse)
-        mlflow.log_metric("mae", mae)
-        mlflow.log_metric("r2", r2)
+    print(f"RMSE: {rmse}")
+    print(f"MAE : {mae}")
+    print(f"R2  : {r2}")
+    print("ElasticNet model (alpha={:f}, l1_ratio={:f})".format(alpha, l1_ratio))
 
-        mlflow.sklearn.log_model(lr, "mymodel")
+    mlflow.log_param("alpha", alpha)
+    mlflow.log_param("l1_ratio", l1_ratio)
+    mlflow.log_metric("rmse", rmse)
+    mlflow.log_metric("mae", mae)
+    mlflow.log_metric("r2", r2)
+
+    mlflow.sklearn.log_model(lr, "my_model")
+
+
+
+    mlflow.end_run()
+
+    run = mlflow.last_active_run()
+    print("Run ID  : ", run.info.run_id)
+    print("Run name: ", run.info.run_name)
 
 
 

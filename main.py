@@ -82,11 +82,9 @@ if __name__ == "__main__":
         'release.version': '2.0'
     }
 
-
-
     mlflow.set_tags(tags)
 
-    mlflow.autolog(
+    mlflow.sklearn.autolog(
         log_input_examples=True
     )
 

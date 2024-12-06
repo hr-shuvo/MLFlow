@@ -61,16 +61,16 @@ if __name__ == "__main__":
     print("The set tracking uri is ", mlflow.get_tracking_uri())
 
     exp= mlflow.set_experiment(
-        experiment_name="experiment_4"
+        experiment_name="experiment_autolog"
     )
     get_exp = mlflow.get_experiment(exp.experiment_id)
 
     print("Exp id: ", get_exp.experiment_id)
     print(f"Name: {get_exp.name}")
-    print(f"Artifact Location: {get_exp.artifact_location}")
-    print(f"Tags: {get_exp.tags}")
-    print(f"Lifecycle_stage: {get_exp.lifecycle_stage}")
-    print(f"Creation timestamp: {get_exp.creation_time}")
+    # print(f"Artifact Location: {get_exp.artifact_location}")
+    # print(f"Tags: {get_exp.tags}")
+    # print(f"Lifecycle_stage: {get_exp.lifecycle_stage}")
+    # print(f"Creation timestamp: {get_exp.creation_time}")
 
 
     mlflow.start_run()
@@ -81,7 +81,14 @@ if __name__ == "__main__":
         'release.candidate': 'RC1',
         'release.version': '2.0'
     }
+
+
+
     mlflow.set_tags(tags)
+
+    mlflow.autolog(
+        log_input_examples=True
+    )
 
     lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42)
     lr.fit(train_x, train_y)
@@ -95,21 +102,10 @@ if __name__ == "__main__":
     print(f"R2  : {r2}")
     print("ElasticNet model (alpha={:f}, l1_ratio={:f})".format(alpha, l1_ratio))
 
-    # log parameters
-    params = {"alpha": alpha, "l1_ratio": l1_ratio}
-    mlflow.log_params(params)
 
-    # log metrics
-    metrics = {"rmse": rmse, "mae": mae, "r2": r2}
-    mlflow.log_metrics(metrics)
-
-    # log model
-    mlflow.sklearn.log_model(lr, "my_model_1")
-
-    mlflow.log_artifacts('data/')
+    mlflow.log_artifact('red-wine-quality.csv')
     artifact_uri = mlflow.get_artifact_uri()
     print("The artifact path is ", artifact_uri)
-
 
 
     mlflow.end_run()

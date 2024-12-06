@@ -61,7 +61,7 @@ if __name__ == "__main__":
     print("The set tracking uri is ", mlflow.get_tracking_uri())
 
     exp= mlflow.set_experiment(
-        experiment_name="experiment_3"
+        experiment_name="experiment_4"
     )
     get_exp = mlflow.get_experiment(exp.experiment_id)
 
@@ -75,6 +75,14 @@ if __name__ == "__main__":
 
     mlflow.start_run()
 
+    # mlflow.set_tag('release.version', '0.1')
+    tags={
+        'engineering': 'ML platform',
+        'release.candidate': 'RC1',
+        'release.version': '2.0'
+    }
+    mlflow.set_tags(tags)
+
     lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42)
     lr.fit(train_x, train_y)
 
@@ -87,9 +95,6 @@ if __name__ == "__main__":
     print(f"R2  : {r2}")
     print("ElasticNet model (alpha={:f}, l1_ratio={:f})".format(alpha, l1_ratio))
 
-    mlflow.log_param("alpha", alpha)
-    mlflow.log_param("l1_ratio", l1_ratio)
-
     # log parameters
     params = {"alpha": alpha, "l1_ratio": l1_ratio}
     mlflow.log_params(params)
@@ -98,6 +103,7 @@ if __name__ == "__main__":
     metrics = {"rmse": rmse, "mae": mae, "r2": r2}
     mlflow.log_metrics(metrics)
 
+    # log model
     mlflow.sklearn.log_model(lr, "my_model_1")
 
     mlflow.log_artifacts('data/')

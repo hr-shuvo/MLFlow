@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import ElasticNet
 import mlflow
 import mlflow.sklearn
+from pathlib import Path
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -50,12 +51,25 @@ if __name__ == "__main__":
     alpha = args.alpha
     l1_ratio = args.l1_ratio
 
-    mlflow.set_tracking_uri(uri="./mytracks")
+    mlflow.set_tracking_uri(uri="")
     print("The set tracking uri is ", mlflow.get_tracking_uri())
 
-    exp = mlflow.set_experiment(experiment_name="exp_for_uri")
+    exp_id = mlflow.create_experiment(
+        name="exp_create_exp_artifact",
+        tags={"version": "v1", "priority": "p1" },
+        artifact_location = Path.cwd().joinpath("myartifacts").as_uri()
+    )
+    get_exp = mlflow.get_experiment(exp_id)
 
-    with mlflow.start_run(experiment_id=exp.experiment_id) as run:
+    print("Exp id: ", exp_id)
+    print(f"Name: {get_exp.name}")
+    print(f"Artifact Location: {get_exp.artifact_location}")
+    print(f"Tags: {get_exp.tags}")
+    print(f"Lifecycle_stage: {get_exp.lifecycle_stage}")
+    print(f"Creation timestamp: {get_exp.creation_time}")
+
+
+    with mlflow.start_run(experiment_id=exp_id) as run:
         lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42)
         lr.fit(train_x, train_y)
 

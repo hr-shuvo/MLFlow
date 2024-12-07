@@ -57,11 +57,11 @@ if __name__ == "__main__":
     alpha = args.alpha
     l1_ratio = args.l1_ratio
 
-    mlflow.set_tracking_uri(uri="")
+    mlflow.set_tracking_uri(uri="http://127.0.0.1:5000")
     print("The set tracking uri is ", mlflow.get_tracking_uri())
 
     exp= mlflow.set_experiment(
-        experiment_name="experiment_autolog"
+        experiment_name="experiment_tracking"
     )
     get_exp = mlflow.get_experiment(exp.experiment_id)
 

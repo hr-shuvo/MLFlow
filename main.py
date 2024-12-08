@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 
 # get arguments from command
 parser = argparse.ArgumentParser()
-parser.add_argument("--alpha", type=float, default=0.4, required=False)
-parser.add_argument("--l1_ratio", type=float, default=0.4, required=False)
+parser.add_argument("--alpha", type=float, default=0.3, required=False)
+parser.add_argument("--l1_ratio", type=float, default=0.6, required=False)
 args = parser.parse_args()
 
 # evaluation function
@@ -84,13 +84,13 @@ if __name__ == "__main__":
     alpha = args.alpha
     l1_ratio = args.l1_ratio
 
-    # mlflow.set_tracking_uri(uri="http://127.0.0.1:5000")
-    mlflow.set_tracking_uri(uri="")
+    mlflow.set_tracking_uri(uri="http://127.0.0.1:5000")
+    # mlflow.set_tracking_uri(uri="")
 
     print("The set tracking uri is ", mlflow.get_tracking_uri())
 
     exp= mlflow.set_experiment(
-        experiment_name="experiment_custom_evaluation"
+        experiment_name="experiment_register_model"
     )
     get_exp = mlflow.get_experiment(exp.experiment_id)
 
@@ -141,6 +141,8 @@ if __name__ == "__main__":
         'mae': mae,
         'r2': r2
     })
+
+    mlflow.sklearn.log_model(lr, 'model', registered_model_name='elasticnet-api')
 
     sklearn_model_path = "sklearn_model.pkl"
     joblib.dump(lr, sklearn_model_path)

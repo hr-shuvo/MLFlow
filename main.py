@@ -15,20 +15,12 @@ from sklearn.dummy import DummyRegressor
 
 import mlflow
 import mlflow.sklearn
-from mlflow.models import MetricThreshold
-from mlflow.models.signature import ModelSignature, infer_signature
-from mlflow.types.schema import Schema, ColSpec
 from mlflow.models import make_metric
 
 import sklearn
 import joblib
 import cloudpickle
 import matplotlib.pyplot as plt
-
-
-
-
-
 
 
 logging.basicConfig(level=logging.WARN)
@@ -64,8 +56,6 @@ if __name__ == "__main__":
 
     # Split the data into training and test sets. (0.75, 0.25)
     train, test = train_test_split(data, random_state=42)
-    # train.to_csv("data/train.csv", index=False)
-    # test.to_csv("data/test.csv", index=False)
 
     data_dir = 'red-wine_data'
     if not os.path.exists(data_dir):
@@ -90,7 +80,7 @@ if __name__ == "__main__":
     print("The set tracking uri is ", mlflow.get_tracking_uri())
 
     exp= mlflow.set_experiment(
-        experiment_name="experiment_register_model"
+        experiment_name="experiment_register_model_api"
     )
     get_exp = mlflow.get_experiment(exp.experiment_id)
 
@@ -113,11 +103,11 @@ if __name__ == "__main__":
 
     mlflow.set_tags(tags)
 
-    mlflow.sklearn.autolog(
-        log_input_examples=False,
-        log_model_signatures=False,
-        log_models=False
-    )
+    # mlflow.sklearn.autolog(
+    #     log_input_examples=False,
+    #     log_model_signatures=False,
+    #     log_models=False
+    # )
 
     lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42)
     lr.fit(train_x, train_y)
@@ -142,7 +132,6 @@ if __name__ == "__main__":
         'r2': r2
     })
 
-    mlflow.sklearn.log_model(lr, 'model', registered_model_name='elasticnet-api')
 
     sklearn_model_path = "sklearn_model.pkl"
     joblib.dump(lr, sklearn_model_path)
@@ -151,100 +140,20 @@ if __name__ == "__main__":
         'data': data_dir
     }
 
+    run = mlflow.last_active_run()
+    mlflow.sklearn.log_model(lr, "model")
 
-    class SklearnWrapper(mlflow.pyfunc.PythonModel):
-        # def __init__(self):
-        #     self.sklearn_model = None
-
-        def load_context(self, context):
-            self.sklearn_model = joblib.load(context.artifacts['sklearn_model'])
-
-        def predict(self, context, model_input):
-            return self.sklearn_model.predict(model_input.values)
-
-    conda_env = {
-        "channels": ["defaults"],
-        "dependencies": [
-            "python={}".format(3.10),
-            "pip",
-            {
-                "pip": [
-                    "mlflow=={}".format(mlflow.__version__),
-                    "scikit-learn=={}".format(sklearn.__version__),
-                    "cloudpickle=={}".format(cloudpickle.__version__),
-                ],
-            },
-        ],
-        "name": "sklearn_env",
-    }
-
-
-
-    mlflow.pyfunc.log_model(
-        artifact_path="sklear_mlflow_pyfunc",
-        python_model=SklearnWrapper(),
-        artifacts=artifacts,
-        code_path=['main.py'],
-        conda_env=conda_env,
-
+    mlflow.register_model(
+        model_uri='runs:/{}/model'.format(run.info.run_id),
+        name='elastic-api-2'
     )
 
-    def squared_diff_plus_one(eval_df, _builtin_metrics):
-        return np.sum(np.abs(eval_df['prediction'] - eval_df['target'] + 1) ** 2)
-
-
-    def sum_on_target_divided_by_two(eval_df, builtin_metrics):
-        return builtin_metrics['sum_on_target'] / 2
-
-    squared_diff_plus_one_metric = make_metric(
-        eval_fn=sum_on_target_divided_by_two,
-        greater_is_better=False,
-        name="sum on target divided by two",
-    )
-
-    sum_on_target_divided_by_two_metric = make_metric(
-        eval_fn=squared_diff_plus_one,
-        greater_is_better=False,
-        name="squared diff plus one",
-    )
-
-    def prediction_target_scatter(eval_df, _builtin_metrics, artifacts_dir):
-        plt.scatter(eval_df["prediction"], eval_df["target"])
-        plt.xlabel("Targets")
-        plt.ylabel("Predictions")
-        plt.title("Targets vs. Predictions")
-        plot_path = os.path.join(artifacts_dir, "example_scatter_plot.png")
-        plt.savefig(plot_path)
-        return {"example_scatter_plot_artifact": plot_path}
-
-
-
-
-    artifacts_uri = mlflow.get_artifact_uri('sklear_mlflow_pyfunc')
-    mlflow.evaluate(
-        artifacts_uri,
-        test,
-        targets='quality',
-        model_type='regressor',
-        evaluators=['default'],
-        custom_metrics=[
-            squared_diff_plus_one_metric,
-            sum_on_target_divided_by_two_metric,
-        ],
-        custom_artifacts=[prediction_target_scatter]
-    )
-
-    # ld = mlflow.pyfunc.load_model(model_uri='runs:/5ec61b4e47c44990bbff990e011d185f/sklear_mlflow_pyfunc')
-    # predicted_qualities = ld.predict(test_x)
-    # (rmse, mae, r2) = eval_metrics(test_y, predicted_qualities)
-    # print(f"RMSE: {rmse}")
-    # print(f"MAE : {mae}")
-    # print(f"R2  : {r2}")
-
-    artifact_uri = mlflow.get_artifact_uri()
-    print("The artifact path is ", artifact_uri)
-
-
+    ld = mlflow.pyfunc.load_model(model_uri="models:/elastic-api-2/2")
+    predicted_qualities = ld.predict(test_x)
+    (rmse, mae, r2) = eval_metrics(test_y, predicted_qualities)
+    print("  RMSE_test: %s" % rmse)
+    print("  MAE_test: %s" % mae)
+    print("  R2_test: %s" % r2)
     mlflow.end_run()
 
     run = mlflow.last_active_run()

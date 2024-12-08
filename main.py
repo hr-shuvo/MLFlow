@@ -2,30 +2,42 @@ import warnings
 import argparse
 import logging
 
+from pathlib import Path
+import os
+
 import pandas as pd
 import numpy as np
 from mlflow import sklearn
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import ElasticNet
+from sklearn.dummy import DummyRegressor
+
 import mlflow
 import mlflow.sklearn
-
-from pathlib import Path
-import os
+from mlflow.models import MetricThreshold
 from mlflow.models.signature import ModelSignature, infer_signature
 from mlflow.types.schema import Schema, ColSpec
+from mlflow.models import make_metric
+
 import sklearn
 import joblib
 import cloudpickle
+import matplotlib.pyplot as plt
+
+
+
+
+
+
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
 
 # get arguments from command
 parser = argparse.ArgumentParser()
-parser.add_argument("--alpha", type=float, default=0.7, required=False)
-parser.add_argument("--l1_ratio", type=float, default=0.5, required=False)
+parser.add_argument("--alpha", type=float, default=0.4, required=False)
+parser.add_argument("--l1_ratio", type=float, default=0.4, required=False)
 args = parser.parse_args()
 
 # evaluation function
@@ -78,7 +90,7 @@ if __name__ == "__main__":
     print("The set tracking uri is ", mlflow.get_tracking_uri())
 
     exp= mlflow.set_experiment(
-        experiment_name="experiment_custom_sklearn"
+        experiment_name="experiment_custom_evaluation"
     )
     get_exp = mlflow.get_experiment(exp.experiment_id)
 
@@ -175,13 +187,57 @@ if __name__ == "__main__":
 
     )
 
-    ld = mlflow.pyfunc.load_model(model_uri='runs:/5ec61b4e47c44990bbff990e011d185f/sklear_mlflow_pyfunc')
-    predicted_qualities = ld.predict(test_x)
+    def squared_diff_plus_one(eval_df, _builtin_metrics):
+        return np.sum(np.abs(eval_df['prediction'] - eval_df['target'] + 1) ** 2)
 
-    (rmse, mae, r2) = eval_metrics(test_y, predicted_qualities)
-    print(f"RMSE: {rmse}")
-    print(f"MAE : {mae}")
-    print(f"R2  : {r2}")
+
+    def sum_on_target_divided_by_two(eval_df, builtin_metrics):
+        return builtin_metrics['sum_on_target'] / 2
+
+    squared_diff_plus_one_metric = make_metric(
+        eval_fn=sum_on_target_divided_by_two,
+        greater_is_better=False,
+        name="sum on target divided by two",
+    )
+
+    sum_on_target_divided_by_two_metric = make_metric(
+        eval_fn=squared_diff_plus_one,
+        greater_is_better=False,
+        name="squared diff plus one",
+    )
+
+    def prediction_target_scatter(eval_df, _builtin_metrics, artifacts_dir):
+        plt.scatter(eval_df["prediction"], eval_df["target"])
+        plt.xlabel("Targets")
+        plt.ylabel("Predictions")
+        plt.title("Targets vs. Predictions")
+        plot_path = os.path.join(artifacts_dir, "example_scatter_plot.png")
+        plt.savefig(plot_path)
+        return {"example_scatter_plot_artifact": plot_path}
+
+
+
+
+    artifacts_uri = mlflow.get_artifact_uri('sklear_mlflow_pyfunc')
+    mlflow.evaluate(
+        artifacts_uri,
+        test,
+        targets='quality',
+        model_type='regressor',
+        evaluators=['default'],
+        custom_metrics=[
+            squared_diff_plus_one_metric,
+            sum_on_target_divided_by_two_metric,
+        ],
+        custom_artifacts=[prediction_target_scatter]
+    )
+
+    # ld = mlflow.pyfunc.load_model(model_uri='runs:/5ec61b4e47c44990bbff990e011d185f/sklear_mlflow_pyfunc')
+    # predicted_qualities = ld.predict(test_x)
+    # (rmse, mae, r2) = eval_metrics(test_y, predicted_qualities)
+    # print(f"RMSE: {rmse}")
+    # print(f"MAE : {mae}")
+    # print(f"R2  : {r2}")
 
     artifact_uri = mlflow.get_artifact_uri()
     print("The artifact path is ", artifact_uri)
